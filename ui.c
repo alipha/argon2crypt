@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "common.h"
+#include "proxies.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,34 +20,34 @@ error_type parse_args(char **argv, int argc, action_type *action, int *memory_kb
 			*action = DECRYPT;
 		} else if(strcmp(arg, "-m") == 0) {
 			if(i == argc - 3) {
-				printf("Not enough arguments.\n");
+				p_fprintf(stderr, "Not enough arguments.\n");
 				return usage(argv[0]);
 			}
 			*memory_kbits = strtoul(argv[++i], 0, 10);
 			if(valid_memory_kbits(*memory_kbits)) {
-				printf("-m must be between %d and %d. (%s and %s of memory)\n", MIN_MEMORY_KBITS, MAX_MEMORY_KBITS, MIN_MEMORY_KBITS_STR, MAX_MEMORY_KBITS_STR);
-				printf("Valid values of -m may be further constrained by\n");
-				printf("the amount of memory on your system.\n");
+				p_fprintf(stderr, "-m must be between %d and %d. (%s and %s of memory)\n", MIN_MEMORY_KBITS, MAX_MEMORY_KBITS, MIN_MEMORY_KBITS_STR, MAX_MEMORY_KBITS_STR);
+				p_fprintf(stderr, "Valid values of -m may be further constrained by\n");
+				p_fprintf(stderr, "the amount of memory on your system.\n");
 				return usage(argv[0]);
 			}
 		} else if(strcmp(arg, "-t") == 0) {
 			if(i == argc - 3) {
-				printf("Not enough arguments.\n");
+				p_fprintf(stderr, "Not enough arguments.\n");
 				return usage(argv[0]);
 			}
 			*iterations = strtoul(argv[++i], 0, 10);
 			if(valid_iterations(*iterations)) {
-				printf("-t must be at least %d and less than %d.\n", MIN_ITERATIONS, MAX_ITERATIONS);
+				p_fprintf(stderr, "-t must be at least %d and less than %d.\n", MIN_ITERATIONS, MAX_ITERATIONS);
 				return usage(argv[0]);
 			}
 		} else {
-			printf("Unknown argument: %s\n", arg);
+			p_fprintf(stderr, "Unknown argument: %s\n", arg);
 			return usage(argv[0]);
 		}
 	}
 
 	if(*action == UNSPECIFIED) {
-		printf("You must specify either -e or -d for encrypting or decrypting.\n");
+		p_fprintf(stderr, "You must specify either -e or -d for encrypting or decrypting.\n");
 		return usage(argv[0]);
 	}
 
@@ -55,102 +56,104 @@ error_type parse_args(char **argv, int argc, action_type *action, int *memory_kb
 
 
 error_type usage(const char *exe) {
-	printf("\n");
-	printf("Usage: %s [-e|-d] [-m N] [-t N] source dest\n", exe);
-	printf("\n");
-	printf("Encrypts or decrypts a file with a key derived from the user-entered passphrase\n");
-	printf("using Argon2 and ChaCha20-Poly1305.\n");
-	printf("\n");
-	printf("source, dest, and -e or -d are required.\n");
-	printf("\n");
-	printf("\t-e\tEncrypts file 'source' and saves the encrypted result as 'dest'\n");
-	printf("\t-d\tDecrypts file 'source' and saves the decrypted result as 'source'\n");
-	printf("\t-m N\tSets the memory usage to 2^N KiB. (Default is 14 (16 MiB))\n");
-	printf("\t-t N\tSets the number of iterations to N. (Default is 3)\n");
-	printf("\n");
-	printf("-m and -t are ignored when decrypting. The values used to encrypt the file are used.");
+	p_fprintf(stderr, "\n");
+	p_fprintf(stderr, "Usage: %s [-e|-d] [-m N] [-t N] source dest\n", exe);
+	p_fprintf(stderr, "\n");
+	p_fprintf(stderr, "Encrypts or decrypts a file with a key derived from the user-entered passphrase\n");
+	p_fprintf(stderr, "using Argon2 and ChaCha20-Poly1305.\n");
+	p_fprintf(stderr, "\n");
+	p_fprintf(stderr, "source, dest, and -e or -d are required.\n");
+	p_fprintf(stderr, "\n");
+	p_fprintf(stderr, "\t-e\tEncrypts file 'source' and saves the encrypted result as 'dest'\n");
+	p_fprintf(stderr, "\t-d\tDecrypts file 'source' and saves the decrypted result as 'source'\n");
+	p_fprintf(stderr, "\t-m N\tSets the memory usage to 2^N KiB. (Default is 14 (16 MiB))\n");
+	p_fprintf(stderr, "\t-t N\tSets the number of iterations to N. (Default is 3)\n");
+	p_fprintf(stderr, "\n");
+	p_fprintf(stderr, "-m and -t are ignored when decrypting. The values used to encrypt the file are used.");
 	return INVALID_ARGUMENT;
 }
 
 
-error_type derive_key(unsigned char *key, unsigned char *password_verify, const metadata_type *metadata, int confirm) {
-	unsigned char verify_and_key[sizeof metadata->password_verify + sizeof metadata->encrypted_key];
-	unsigned char *p = verify_and_key;
-	error_type result = SUCCESS;
-	char *password = 0;
-	size_t password_len = 0;
-	char *confirm_password = 0;
-	size_t confirm_len = 0;
+error_type prompt_password(char *password, int confirm) {
+	char confirm_password[PASSWORD_MAX_SIZE];
+	error_type error;
 
 	do {
-		printf("Enter passphrase: ");
+		p_fprintf(stdout, "Enter passphrase: ");
 
-		if(read_password(&password, &password_len, stdin) == -1 || password[0] == '\0') {
-			result = USER_CANCELLED;
-			break;
-		}
+		error = read_password(password, PASSWORD_MAX_SIZE);
+ 
+		if(error != SUCCESS && error != LINE_LENGTH_EXCEEDED)
+			return error;
+
+		if(password[0] == '\0' || password[0] == '\n')
+			return USER_CANCELLED;
 
 		if(!confirm)
-			break;
+			return SUCCESS;
 
-		printf("Confirm passphrase: ");
 
-		if(read_password(&confirm_password, &confirm_len, stdin) == -1) {
-			result = USER_CANCELLED;
-			break;
-		}
-		
+		p_fprintf(stdout, "Confirm passphrase: ");
+
+		error = read_password(confirm_password, PASSWORD_MAX_SIZE);
+
+		if(error != SUCCESS && error != LINE_LENGTH_EXCEEDED)
+			return error;
+
 		if(strcmp(password, confirm_password) == 0)
 			confirm = 0;
 		else
-			printf("Passphrases do not match.\n");
+			p_fprintf(stdout, "Passphrases do not match.\n");
 	} while(confirm);
 
-
-	if(result == 0) {
-		if(crypto_pwhash(p, sizeof verify_and_key, password, strlen(password), metadata->salt, metadata->iterations, 1 << (metadata->memory_kbits + 10), crypto_pwhash_ALG_DEFAULT) == 0) {
-			read_binary(password_verify, &p, sizeof metadata->password_verify);
-			read_binary(key, &p, sizeof metadata->encrypted_key);
-		} else {
-			printf("The -m parameter is larger than the available memory. "); 
-
-			if(confirm)
-				printf("Please reduce -m or free some memory.");
-			else
-				printf("Please free some memory.");
-
-			result = OUT_OF_MEMORY;
-		}
-	}
-
-	// TODO: zero password, confirm_password, and verify_and_key
-	free(password);
-	free(confirm_password);
-	return result;
+	return SUCCESS;
 }
 
 
-size_t read_password(char **lineptr, size_t *n, FILE *stream) {
+error_type read_password(char *line, size_t max_size) {
 	struct termios old_term, new_term;
-	int nread;
+	error_type error;
 
 	/* Turn echoing off and fail if we can't. */
-	if (tcgetattr(fileno(stream), &old_term) != 0)
-		return -1;
+	if (p_tcgetattr(fileno(stdin), &old_term) != 0)
+		return TERMINAL_ERROR;
 
 	new_term = old_term;
 	new_term.c_lflag &= ~ECHO;
 
-	if (tcsetattr(fileno(stream), TCSAFLUSH, &new_term) != 0)
-		return -1;
+	if (p_tcsetattr(fileno(stdin), TCSAFLUSH, &new_term) != 0)
+		return TERMINAL_ERROR;
 
 	/* Read the password. */
-	nread = getline(lineptr, n, stream);	// TODO: this needs to zero memory
+	error = read_line(line, max_size);
 
 	/* Restore terminal. */
-	(void) tcsetattr(fileno(stream), TCSAFLUSH, &old_term);
+	(void) p_tcsetattr(fileno(stream), TCSAFLUSH, &old_term);
 
-	return nread;
+	return error;
+}
+
+
+error_type read_line(char *line, size_t max_size) {
+	size_t count;
+	int ch = '\0';
+
+	line[0] = '\0';
+
+	if(!p_fgets(line, max_size, stdin))
+		return USER_CANCELLED;
+
+	count = strlen(line);
+
+	if(count == max_size - 1 && line[count - 1] != '\n') {
+		// discard anything longer than max_size on the line
+		while(ch != EOF && ch != '\n')
+			ch = p_fgetc(stdin);
+
+		return LINE_LENGTH_EXCEEDED;
+	}
+
+	return SUCCESS;
 }
 
 
@@ -183,10 +186,10 @@ error_type check_excessive(action_type action, int memory_kbits, long iterations
 		time_frame = "years";
 
 	
-	printf("It may take several %s to %s this file.\n", time_frame, (action == ENCRYPT ? "encrypt" : "decrypt"));
+	p_fprintf(stdout, "It may take several %s to %s this file.\n", time_frame, (action == ENCRYPT ? "encrypt" : "decrypt"));
 
 	while(result == -1) {
-		printf("Are you sure you wish to continue? (y/n)\n");
+		p_fprintf(stdout, "Are you sure you wish to continue? (y/n)\n");
 
 		if(getline(&line, &line_len, stdin) == -1 || line[0] == 'n' || line[0] == 'N');
 			result = USER_CANCELLED;
@@ -194,10 +197,10 @@ error_type check_excessive(action_type action, int memory_kbits, long iterations
 			result = 0;
 
 		if(result == -1)
-			printf("Please enter either 'y' or 'n'\n");
+			p_fprintf(stdout, "Please enter either 'y' or 'n'\n");
 	}
 
-	free(line);
+	p_free(line);
 	return result;
 }
 

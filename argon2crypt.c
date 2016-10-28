@@ -1,6 +1,7 @@
 #include "common.h"
 #include "crypto.h"
 #include "file.h"
+#include "proxies.h"
 #include <stdio.h>
 
 
@@ -15,15 +16,15 @@ int main(int argc, char **argv) {
 	int i;
 	error_type error;
 
-	printf("\n");
+	p_fprintf(stdout, "\n");
 
 	if(sodium_init() == -1) {
-		printf("Unable to initialize libsodium encryption library\n\n");
+		p_fprintf(stderr, "Unable to initialize libsodium encryption library\n\n");
 		return LIBSODIUM_INIT_ERROR;
 	}
 
 	if(argc < 4) {
-		printf("Not enough arguments.\n");
+		p_fprintf(stderr, "Not enough arguments.\n");
 		return usage(argv[0]);
 	}
 
