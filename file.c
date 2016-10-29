@@ -108,3 +108,16 @@ error_type extract_metadata(metadata_type *metadata, const char *exe, const char
 	return SUCCESS;
 }
 
+
+unsigned char *write_metadata(unsigned char *file_contents, const metadata_type *metadata) {
+	write_binary(&file_contents, HEADER, header_len);
+	write_hex(&file_contents, memory_kbits, MEMORY_KBITS_HEX_LEN);
+	write_hex(&file_contents, iterations, ITERATIONS_HEX_LEN);
+	write_binary(&file_contents, metadata.salt, sizeof metadata.salt);
+	write_binary(&file_contents, password_verify, sizeof password_verify);
+	write_binary(&file_contents, encrypted_key, sizeof encrypted_key);
+	write_binary(&file_contents, metadata.nonce, sizeof metadata.nonce);
+
+	return file_contents;
+}
+

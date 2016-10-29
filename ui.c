@@ -76,29 +76,27 @@ error_type usage(const char *exe) {
 
 error_type prompt_password(char *password, int confirm) {
 	char confirm_password[PASSWORD_MAX_SIZE];
-	error_type error;
+	error_type error = SUCCESS;
 
 	do {
 		p_fprintf(stdout, "Enter passphrase: ");
 
-		error = read_password(password, PASSWORD_MAX_SIZE);
+		if((error = read_password(password, PASSWORD_MAX_SIZE)))
+			break;
  
-		if(error != SUCCESS && error != LINE_LENGTH_EXCEEDED)
-			return error;
-
-		if(password[0] == '\0' || password[0] == '\n')
-			return USER_CANCELLED;
+		if(password[0] == '\0' || password[0] == '\n') {
+			error = USER_CANCELLED;
+			break;
+		}
 
 		if(!confirm)
-			return SUCCESS;
+			break;
 
 
 		p_fprintf(stdout, "Confirm passphrase: ");
 
-		error = read_password(confirm_password, PASSWORD_MAX_SIZE);
-
-		if(error != SUCCESS && error != LINE_LENGTH_EXCEEDED)
-			return error;
+		if((error = read_password(confirm_password, PASSWORD_MAX_SIZE)))
+			break;
 
 		if(strcmp(password, confirm_password) == 0)
 			confirm = 0;
@@ -106,7 +104,8 @@ error_type prompt_password(char *password, int confirm) {
 			p_fprintf(stdout, "Passphrases do not match.\n");
 	} while(confirm);
 
-	return SUCCESS;
+	sodium_memzero(confirm_password, sizeof confirm_password);
+	return error;
 }
 
 
@@ -150,7 +149,7 @@ error_type read_line(char *line, size_t max_size) {
 		while(ch != EOF && ch != '\n')
 			ch = p_fgetc(stdin);
 
-		return LINE_LENGTH_EXCEEDED;
+		//return LINE_LENGTH_EXCEEDED;
 	}
 
 	return SUCCESS;

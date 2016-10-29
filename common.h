@@ -17,7 +17,7 @@ typedef enum action_type {
 
 
 typedef enum error_type {
-	SUCCESS = 0,i
+	SUCCESS = 0,
 	LINE_LENGTH_EXCEEDED,
 	INVALID_ARGUMENT,
 	USER_CANCELLED,
@@ -27,7 +27,7 @@ typedef enum error_type {
 	TERMINAL_ERROR,
 	OUT_OF_MEMORY,
 	ARGON2_ERROR,
-	CORRUPT_DEST_FILE
+	CORRUPT_SOURCE_FILE
 } error_type;
 
 

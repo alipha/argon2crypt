@@ -16,6 +16,6 @@ error_type read_file(const char *filename, unsigned char **source_file, size_t *
 error_type write_file(const char *filename, const unsigned char *file_contents, size_t file_size);
 
 error_type extract_metadata(metadata_type *metadata, const char *exe, const char *filename, const unsigned char **file_contents, size_t file_size);
-
+unsigned char *write_metadata(unsigned char *file_contents, const metadata_type *metadata);
 
 #endif
