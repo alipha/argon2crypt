@@ -7,6 +7,9 @@
 #include <termios.h>
 
 
+int fileno(FILE *file);
+
+
 error_type parse_args(char **argv, int argc, action_type *action, int *memory_kbits, long *iterations) {
 	int i;
 	const char *arg;
@@ -127,7 +130,7 @@ error_type read_password(char *line, size_t max_size) {
 	error = read_line(line, max_size);
 
 	/* Restore terminal. */
-	(void) p_tcsetattr(fileno(stream), TCSAFLUSH, &old_term);
+	(void) p_tcsetattr(fileno(stdin), TCSAFLUSH, &old_term);
 
 	return error;
 }
@@ -158,8 +161,7 @@ error_type read_line(char *line, size_t max_size) {
 
 error_type check_excessive(action_type action, int memory_kbits, long iterations) {
 	int result = -1;
-	char *line = 0;
-	size_t line_len = 0;
+	char line[1024];
 	const char *time_frame = "minutes";
 	unsigned long long cost = (unsigned long long)iterations * (1UL << memory_kbits);
  	unsigned long long beyond_excessive = cost / EXCESSIVE_COST;
@@ -190,7 +192,7 @@ error_type check_excessive(action_type action, int memory_kbits, long iterations
 	while(result == -1) {
 		p_fprintf(stdout, "Are you sure you wish to continue? (y/n)\n");
 
-		if(getline(&line, &line_len, stdin) == -1 || line[0] == 'n' || line[0] == 'N');
+		if(read_line(line, sizeof line) != SUCCESS || line[0] == 'n' || line[0] == 'N')
 			result = USER_CANCELLED;
 		else if(line[0] == 'y' || line[0] == 'Y')
 			result = 0;

@@ -1,12 +1,10 @@
 #ifndef UI_H
 #define UI_H
 
-#include "crypto.h"
 #include "common.h"
 #include <stdio.h>
-#include <stdint.h>
+#include <stddef.h>
 
-#define PASSWORD_MAX_SIZE 1024
 #define EXCESSIVE_COST (1UL << 26)	/* "several minutes" */
 
 

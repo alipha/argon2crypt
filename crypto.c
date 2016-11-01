@@ -1,16 +1,18 @@
 #include "crypto.h"
 #include "file.h"
 #include "proxies.h"
+#include "ui.h"
 #include "util.h"
 #include <sodium.h>
 #include <stdio.h>
+#include <string.h>
 
 
 error_type encrypt_file(unsigned char *file_contents, size_t file_size, int memory_kbits, long iterations) {
 	error_type error;
 	metadata_type metadata;
 	char password[PASSWORD_MAX_SIZE];
-	size_t header_len = strlen(HEADER);
+	unsigned char key[sizeof metadata.encrypted_key];
 
 	if((error = prompt_password(password, 1))) {
 		sodium_memzero(password, sizeof password);
@@ -23,13 +25,18 @@ error_type encrypt_file(unsigned char *file_contents, size_t file_size, int memo
 	p_randombytes_buf(metadata.nonce, sizeof metadata.nonce);
 	p_randombytes_buf(metadata.encrypted_key, sizeof metadata.encrypted_key);
 
-	if((error = derive_key(metadata.encrypted_key, metadata.password_verify, password, &metadata)))
-		return error;
+	memcpy(key, metadata.encrypted_key, sizeof key);
 
-	file_contents = write_metadata(file_contents, &metadata);
+	error = derive_key(metadata.encrypted_key, metadata.password_verify, password, &metadata, 1);
 
-	p_crypto_secretbox_easy(file_contents, file_contents, file_size, metadata.nonce, key);
+	if(!error) {
+		file_contents = write_metadata(file_contents, &metadata);
+		p_crypto_secretbox_easy(file_contents, file_contents, file_size, metadata.nonce, key);
+	}
+
+	sodium_memzero(password, sizeof password);
 	sodium_memzero(&metadata, sizeof metadata);
+	sodium_memzero(key, sizeof key);
 	return SUCCESS;
 }
 
@@ -42,20 +49,20 @@ error_type decrypt_file(unsigned char *file_contents, size_t file_size, const me
 	unsigned char password_verify[sizeof metadata->password_verify];
 
 	while(!password_correct) {
-		if((error = prompt_password(password, 0))) {
+		if((error = prompt_password(password, 0)))
 			break;
 
 		memcpy(key, metadata->encrypted_key, sizeof key);
 
-		if((error = derive_key(key, password_verify, password, metadata)))
+		if((error = derive_key(key, password_verify, password, metadata, 0)))
 			break;
 
 		if(memcmp(password_verify, metadata->password_verify, sizeof password_verify) != 0) {
 			p_fprintf(stderr, "Password is incorrect or the file is corrupted.\n");
-		} else if(p_crypto_secretbox_open_easy(file_contents, file_contents, file_size, metadata.nonce, key) == 0) {
+		} else if(p_crypto_secretbox_open_easy(file_contents, file_contents, file_size, metadata->nonce, key) == 0) {
 			password_correct = 1;
 		} else {
-			p_fprintf(stderr, "File is corrupted and unable to be decrypted.\n");
+			p_fprintf(stderr, "File is corrupted and is unable to be decrypted.\n");
 			error = CORRUPT_SOURCE_FILE;
 			break;
 		}
@@ -68,12 +75,12 @@ error_type decrypt_file(unsigned char *file_contents, size_t file_size, const me
 }
 
 
-error_type derive_key(unsigned char *encrypted_key, unsigned char *password_verify, const char *password, const metadata_type *metadata) {
+error_type derive_key(unsigned char *encrypted_key, unsigned char *password_verify, const char *password, const metadata_type *metadata, int confirm) {
 	unsigned char verify_and_xor_stream[sizeof metadata->password_verify + sizeof metadata->encrypted_key];
-	unsigned char *p = verify_and_xor_stream;
+	const unsigned char *p = verify_and_xor_stream;
 	error_type result = SUCCESS;
 
-	if(p_crypto_pwhash(p, sizeof verify_and_xor_stream, password, strlen(password), metadata->salt, metadata->iterations, 1 << (metadata->memory_kbits + 10), crypto_pwhash_ALG_DEFAULT) == 0) {
+	if(p_crypto_pwhash(verify_and_xor_stream, sizeof verify_and_xor_stream, password, strlen(password), metadata->salt, metadata->iterations, 1 << (metadata->memory_kbits + 10), crypto_pwhash_ALG_DEFAULT) == 0) {
 		read_binary(password_verify, &p, sizeof metadata->password_verify);
 		xor_bytes(encrypted_key, p, sizeof metadata->encrypted_key);
 	} else {

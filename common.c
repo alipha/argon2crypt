@@ -7,6 +7,6 @@ int valid_memory_kbits(int memory_kbits) {
 
 
 int valid_iterations(int iterations) {
-	return iterations >= MIN_ITERATIONS && iterations <= MAX_ITERATIONS;
+	return iterations >= MIN_ITERATIONS && (unsigned int)iterations <= MAX_ITERATIONS;
 }
 

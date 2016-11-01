@@ -1,6 +1,7 @@
 #include "common.h"
 #include "crypto.h"
 #include "file.h"
+#include "ui.h"
 #include "proxies.h"
 #include <stdio.h>
 
@@ -25,12 +26,12 @@ int main(int argc, char **argv) {
 
 error_type run(int argc, char **argv, unsigned char **file_contents, size_t *file_size, metadata_type *metadata) {
 	unsigned char *p;
+	const unsigned char *cp;
 	const char *source_filename;
 	const char *dest_filename;
 	int memory_kbits = 14;
 	long iterations = 3;
 	action_type action = UNSPECIFIED;
-	int i;
 	error_type error;
 
 	p_fprintf(stdout, "\n");
@@ -54,13 +55,13 @@ error_type run(int argc, char **argv, unsigned char **file_contents, size_t *fil
 	if((error = read_file(source_filename, file_contents, file_size, action)))
 		return error;
 	
-	p = *file_contents;
+	cp = p = *file_contents;
 
 	if(action == ENCRYPT) {
-		error = encrypt_file(*p, *file_size, memory_kbits, iterations);
+		error = encrypt_file(p, *file_size, memory_kbits, iterations);
 		file_size += FULL_HEADER_LEN;
 	} else {
-		if((error = extract_metadata(metadata, argv[0], source_filename, &p, file_size)))
+		if((error = extract_metadata(metadata, argv[0], source_filename, &cp, *file_size)))
 			return error;
 
 		error = decrypt_file(p, *file_size, metadata);

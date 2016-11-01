@@ -1,8 +1,13 @@
 #include "proxies.h"
+#include <sodium.h>
 #include <stdio.h>
-#include <stdint.h>
+#include <stdlib.h>
+#include <stddef.h>
 #include <stdarg.h>
 #include <termio.h>
+
+
+int fileno(FILE *file);
 
 
 FILE* (*p_fopen)(const char *path, const char *mode) = fopen;
@@ -17,7 +22,7 @@ char* (*p_fgets)(char *s, int size, FILE *file) = fgets;
 int (*p_fgetc)(FILE *file) = fgetc;
 
 int (*p_fileno)(FILE *file) = fileno;
-int (*p_perror)(const char *str) = perror;
+void (*p_perror)(const char *str) = perror;
 
 int (*p_tcgetattr)(int file, struct termios *termios_p) = tcgetattr;
 int (*p_tcsetattr)(int file, int actions, const struct termios *termios_p) = tcsetattr;

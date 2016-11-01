@@ -1,4 +1,6 @@
 #include "util.h"
+#include <string.h>
+#include <limits.h>
 
 
 void read_binary(unsigned char *dest, const unsigned char **src, size_t amount) {
@@ -16,8 +18,8 @@ void write_binary(unsigned char **dest, const unsigned char *src, size_t amount)
 long read_hex(const unsigned char **str, size_t digits) {
 	char ch;
 	long value = 0;
-	int i;
-	unsigned char *p = *str;
+	size_t i;
+	const unsigned char *p = *str;
 
 	for(i = 0; i < digits; i++) {
 		if(value > LONG_MAX >> 4)
@@ -37,11 +39,12 @@ long read_hex(const unsigned char **str, size_t digits) {
 	}
 
 	*str = p;
+	return value;
 }
 
 
 void write_hex(unsigned char **dest, long value, size_t digits) {
-	int i;
+	size_t i;
 	long digit;
 	unsigned char *p = *dest;
 
@@ -61,7 +64,7 @@ void write_hex(unsigned char **dest, long value, size_t digits) {
 }
 
 
-void xor_bytes(unsigned char *dest, unsigned char *src, size_t amount) {
+void xor_bytes(unsigned char *dest, const unsigned char *src, size_t amount) {
 	for(size_t i = 0; i < amount; i++)
 		dest[i] ^= src[i];
 }

@@ -1,6 +1,7 @@
 #include "file.h"
 #include "common.h"
 #include "proxies.h"
+#include "util.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -44,7 +45,7 @@ error_type read_file(const char *filename, unsigned char **source_file, size_t *
 
 	read = p_fread(*source_file + header_len, 1, size, file);
 
-	if(read != size) {
+	if(read != (unsigned long)size) {
 		p_fprintf(stderr, "Failure to read source file: %s\n", filename);
 		p_perror(0);
 		p_fclose(file);
@@ -73,7 +74,7 @@ error_type write_file(const char *filename, const unsigned char *file_contents, 
 		p_fprintf(stderr, "Failure to write to dest file: %s\n", filename);
 		p_perror(0);
 		p_fclose(file);
-		return INVALID_DEST_fILE;
+		return INVALID_DEST_FILE;
 	}
 
 	p_fclose(file);
@@ -83,14 +84,12 @@ error_type write_file(const char *filename, const unsigned char *file_contents, 
 
 error_type extract_metadata(metadata_type *metadata, const char *exe, const char *filename, const unsigned char **file_contents, size_t file_size) {
 	error_type error;
-	size_t header_len;
 	const unsigned char *p;
 
-	header_len = strlen(HEADER); 
 	error = (file_size < FULL_HEADER_LEN);
 
 	if(!error) {
-		p = *file_contents + header_len;
+		p = *file_contents + HEADER_LEN;
 		metadata->memory_kbits = read_hex(&p, MEMORY_KBITS_HEX_LEN);
 		metadata->iterations = read_hex(&p, ITERATIONS_HEX_LEN);
 		read_binary(metadata->salt, &p, sizeof metadata->salt);
@@ -99,9 +98,9 @@ error_type extract_metadata(metadata_type *metadata, const char *exe, const char
 		read_binary(metadata->nonce, &p, sizeof metadata->nonce);
 	}
 	
-	if(error || memcmp(*file_contents, HEADER, header_len) != 0 || !valid_memory_kbits(metadata->memory_kbits) || !valid_iterations(metadata->iterations)) {
-		p_fprintf(stderr, "The dest file \"%s\" does not appear to be encrypted with %s or has been corrupted.\n", filename, exe);
-		return CORRUPT_DEST_FILE;
+	if(error || memcmp(*file_contents, HEADER, HEADER_LEN) != 0 || !valid_memory_kbits(metadata->memory_kbits) || !valid_iterations(metadata->iterations)) {
+		p_fprintf(stderr, "The source file \"%s\" does not appear to be encrypted with %s or has been corrupted.\n", filename, exe);
+		return CORRUPT_SOURCE_FILE;
 	}
 
 	*file_contents = p;
@@ -110,13 +109,14 @@ error_type extract_metadata(metadata_type *metadata, const char *exe, const char
 
 
 unsigned char *write_metadata(unsigned char *file_contents, const metadata_type *metadata) {
-	write_binary(&file_contents, HEADER, header_len);
-	write_hex(&file_contents, memory_kbits, MEMORY_KBITS_HEX_LEN);
-	write_hex(&file_contents, iterations, ITERATIONS_HEX_LEN);
-	write_binary(&file_contents, metadata.salt, sizeof metadata.salt);
-	write_binary(&file_contents, password_verify, sizeof password_verify);
-	write_binary(&file_contents, encrypted_key, sizeof encrypted_key);
-	write_binary(&file_contents, metadata.nonce, sizeof metadata.nonce);
+
+	write_binary(&file_contents, (unsigned char *)HEADER, HEADER_LEN);
+	write_hex(&file_contents, metadata->memory_kbits, MEMORY_KBITS_HEX_LEN);
+	write_hex(&file_contents, metadata->iterations, ITERATIONS_HEX_LEN);
+	write_binary(&file_contents, metadata->salt, sizeof metadata->salt);
+	write_binary(&file_contents, metadata->password_verify, sizeof metadata->password_verify);
+	write_binary(&file_contents, metadata->encrypted_key, sizeof metadata->encrypted_key);
+	write_binary(&file_contents, metadata->nonce, sizeof metadata->nonce);
 
 	return file_contents;
 }

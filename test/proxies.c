@@ -3,10 +3,6 @@
 #include <stdlib.h>
 
 
-#define MALLOC_MAX_COUNT 100
-
-
-
 typedef struct malloc_info_type {
 	void *ptr;
 	size_t size;

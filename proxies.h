@@ -2,7 +2,7 @@
 #define PROXIES_H
 
 #include <stdio.h>
-#include <stdint.h>
+#include <stddef.h>
 #include <termio.h>
 
 
@@ -18,7 +18,7 @@ extern char* (*p_fgets)(char *s, int size, FILE *file);
 extern int (*p_fgetc)(FILE *file);
 
 extern int (*p_fileno)(FILE *file);
-extern int (*p_perror)(const char *str);
+extern void (*p_perror)(const char *str);
 
 extern int (*p_tcgetattr)(int file, struct termios *termios_p);
 extern int (*p_tcsetattr)(int file, int actions, const struct termios *termios_p);
