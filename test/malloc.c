@@ -1,6 +1,6 @@
 #include "malloc.h"
-#include "proxies.h"
-#include "../proxies.h"
+#include "lib/proxies.h"
+#include "../lib/proxies.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

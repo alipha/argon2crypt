@@ -1,5 +1,5 @@
 #include "proxies.h"
-#include "../proxies.h"
+#include "../../lib/proxies.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

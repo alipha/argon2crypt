@@ -1,8 +1,8 @@
-#include "common.h"
-#include "crypto.h"
-#include "file.h"
-#include "ui.h"
-#include "proxies.h"
+#include "lib/common.h"
+#include "lib/crypto.h"
+#include "lib/file.h"
+#include "lib/ui.h"
+#include "lib/proxies.h"
 #include <stdio.h>
 
 
