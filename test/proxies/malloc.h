@@ -1,5 +1,5 @@
-#ifndef TEST_PROXIES_H
-#define TEST_PROXIES_H
+#ifndef TEST_PROXIES_MALLOC_H
+#define TEST_PROXIES_MALLOC_H
 
 #include <stddef.h>
 
