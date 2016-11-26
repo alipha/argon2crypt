@@ -5,8 +5,22 @@
 #include <stddef.h>
 
 
-expected_call* increment_expected();
-expected_call* next_expected(io_function func);
+typedef enum {
+	IO_NONE,
+	IO_FOPEN,
+	IO_FCLOSE,
+	IO_FSEEK,
+	IO_FTELL,
+	IO_FPRINTF,
+	IO_FREAD,
+	IO_FWRITE,
+	IO_FGETS,
+	IO_FGETC
+} io_function;
+
+
+struct expected_call* increment_expected();
+struct expected_call* next_expected(io_function func);
 
 
 void test_fopen_add_expected(const char *path, const char *mode, FILE *return_value);
@@ -14,10 +28,10 @@ void test_fclose_add_expected(FILE *file, int return_value);
 void test_fseek_add_expected(FILE *file, long offset, int whence, int return_value);
 void test_ftell_add_expected(FILE *file, long return_value);
 
-void test_fprintf_add_expected(FILE *file, const char *output, int return_error);
-void test_fread_add_buffer(const void *buffer, size_t size, size_t expected_size, FILE *file);
-void test_fwrite_add_expected(const void *expected, size_t size, FILE *file, int return_error);
-void test_fgets_add_buffer(const char *buffer, int size, int expected_size, FILE *file);
+void test_fprintf_add_expected(FILE *file, const char *expected_output, int return_error);
+void test_fread_add_buffer(const void *buffer, size_t buffer_size, size_t expected_byte_count, FILE *file);
+void test_fwrite_add_expected(const void *expected, size_t size, FILE *file, size_t return_value);
+void test_fgets_add_buffer(const char *buffer, int expected_size, FILE *file);
 void test_fgetc_add_buffer(const char *buffer, int size, FILE *file);
 
 void test_io_startup(void);
