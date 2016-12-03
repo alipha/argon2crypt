@@ -1,11 +1,18 @@
 #include "io.h"
 #include "../../lib/proxies.h"
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stddef.h>
+
+#ifndef OVERRIDE_ASSERT
 #include <assert.h>
+#else
+#define assert(x) if(!(x)) printf("Assert failed on line %d: %s", __LINE__, "#x")
+#endif
 
 #define MAX_EXPECTED_CALLS 100
+#define FPRINTF_BUF_SIZE 10000
 
 
 typedef struct {
@@ -82,6 +89,7 @@ typedef struct expected_call {
 
 
 expected_call expected_calls[MAX_EXPECTED_CALLS];
+char fprintf_buffer[FPRINTF_BUF_SIZE];
 
 int expected_call_count;
 int expected_call_index;
@@ -137,10 +145,11 @@ void test_fseek_add_expected(FILE *file, long offset, int whence, int return_val
 	expected_call *call = increment_expected(IO_FSEEK);
 
 	assert(file != NULL);
+	assert(whence == SEEK_SET || whence == SEEK_CUR || whence == SEEK_END);
 
 	call->args.fseek_args.file = file;
 	call->args.fseek_args.offset = offset;
-	call->args.fseek_args.whence = whence;	// TODO: validate whence
+	call->args.fseek_args.whence = whence;
 	call->args.fseek_args.return_value = return_value;
 }
 
@@ -294,8 +303,21 @@ long test_ftell(FILE *file) {
 
 
 int test_fprintf(FILE *file, const char *format, ...) {
+	va_list va;
 	expected_call *call = next_expected(IO_FPRINTF);
-	// TODO
+	
+	assert(file == call->args.fprintf_args.file);
+
+	va_start(va, format);
+	vsnprintf(fprintf_buffer, FPRINTF_BUF_SIZE, format, va);
+	va_end(va);
+
+	assert(strcmp(fprintf_buffer, call->args.fprintf_args.expected_output) == 0);
+
+	if(call->args.fprintf_args.return_error)
+		return -1;
+	else
+		return strlen(fprintf_buffer);
 }
 
 
